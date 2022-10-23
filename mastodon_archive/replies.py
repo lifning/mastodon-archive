@@ -61,10 +61,14 @@ def replies(args):
         else:
             statuses = data[collection];
             print("Indexing %d %s..." % (len(statuses), collection))
+            previous_status_id = None
             for status in statuses:
 
                 if status is None:
-                    print("warning: a status in the %s collection is None" % collection)
+                    if previous_status_id is not None:
+                        print("warning: a status in the %s collection is None. previous status ID was %s" % (collection, previous_status_id))
+                    else:
+                        print("warning: a status in the %s collection is None. there was no previous status" % (collection))
                     continue
 
                 if status["reblog"] is not None:
@@ -75,6 +79,9 @@ def replies(args):
                     pass
                 else:
                     index[status["id"]] = 1
+
+                previous_status_id = status["id"]
+
     print("Indexed %d statuses..." % (len(index)))
 
     print("Counting missing replies...")
