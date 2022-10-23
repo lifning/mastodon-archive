@@ -63,6 +63,10 @@ def replies(args):
             print("Indexing %d %s..." % (len(statuses), collection))
             for status in statuses:
 
+                if status is None:
+                    print("warning: a status in the %s collection is None" % collection)
+                    continue
+
                 if status["reblog"] is not None:
                     status = status["reblog"]
 
