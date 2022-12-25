@@ -69,7 +69,7 @@ def archive(args):
         keys. That's why we fetch it all over again. Expiry helps,
         obviously.
         """
-        seen = { str(status["id"]): status for status in statuses }
+        seen = { str(status["id"]): status for status in statuses if status is not None }
         progress = core.progress_bar()
 
         # define function such that we can return from the inner and
@@ -98,7 +98,37 @@ def archive(args):
                                 print("Seen 10 duplicates, stopping now.")
                                 print("Use --no-stopping to prevent this.")
                                 return count
-                page = mastodon.fetch_next(page)
+                try:
+                    page = mastodon.fetch_next(page)
+                except:
+                    import time
+                    print(f'\n{page.__dict__}\nfound a problem! trying to shorten the list to skip over it')
+                    for i in range(19):
+                        try:
+                            page._pagination_next['limit'] = 20 - i
+                            page = mastodon.fetch_next(page)
+                            print(f'solved by reducing limit to {20-i}')
+                            break
+                        except:
+                            time.sleep(1)
+                    else:
+                        print(f"couldn't shorten the list to skip it, trying to decrease max_id")
+                        for i in range(5000):
+                            page._pagination_next['limit'] = 1
+                            page._pagination_next['max_id'] -= 1
+                            try:
+                                page = mastodon.fetch_next(page)
+                                print(f'solved by reducing max_id to {page._pagination_next["max_id"]}')
+                                page._pagination_next['limit'] = None
+                                break
+                            except:
+                                time.sleep(1)
+                        else:
+                            print()
+                            import traceback, json, pdb
+                            traceback.print_exc()
+                            pdb.post_mortem()
+                            sys.exit(1)
                 if page is None:
                     print() # at the end of the progress bar
                     return count
@@ -129,9 +159,7 @@ def archive(args):
             favourites = data["favourites"]
     elif data is None or not "favourites" in data or len(data["favourites"]) == 0:
         print("Get favourites (this may take a while)")
-        favourites = mastodon.favourites()
-        favourites = mastodon.fetch_remaining(
-            first_page = favourites)
+        favourites = complete([], mastodon.favourites())
     else:
         print("Get new favourites")
         favourites = complete(data["favourites"], mastodon.favourites())
@@ -145,9 +173,7 @@ def archive(args):
                 bookmarks = data["bookmarks"]
         elif data is None or not "bookmarks" in data or len(data["bookmarks"]) == 0:
             print("Get bookmarks (this may take a while)")
-            bookmarks = mastodon.bookmarks()
-            bookmarks = mastodon.fetch_remaining(
-                first_page = bookmarks)
+            bookmarks = complete([], mastodon.bookmarks())
         else:
             print("Get new bookmarks")
             bookmarks = complete(data["bookmarks"], mastodon.bookmarks())

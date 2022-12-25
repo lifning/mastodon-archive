@@ -104,19 +104,21 @@ def replies(args):
 
         bar = Bar('Fetching', max = len(missing))
 
+        not_found = 0
         for id in missing:
             try:
                 status = mastodon.status(id)
                 replies.append(status)
             except Exception as e:
-                if  "not found" in str(e) or "Not Found" in str(e):
-                    pass
+                if  "not found" in str(e):
+                    not_found += 1
                 else:
                     print(e, file=sys.stderr)
 
             bar.next()
 
         bar.finish()
-
+        if not_found > 0:
+            print(f"not found errors: {not_found}")
         data["replies"] = replies
         core.save(status_file, data)

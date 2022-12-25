@@ -38,6 +38,8 @@ def media(args):
     media_dir = domain + '.user.' + username
     data = core.load(status_file, required=True, quiet=True, combine=args.combine)
 
+    hackup = {}
+
     urls = []
     preview_urls_count=0
     for status in data[args.collection]:
@@ -48,8 +50,12 @@ def media(args):
                 if attachment["preview_url"]:
                         urls.append(attachment["preview_url"])
                         preview_urls_count += 1
+                        if attachment["preview_remote_url"]:
+                                hackup[attachment["preview_url"]] = attachment["preview_remote_url"]
                 if attachment["url"]:
                         urls.append(attachment["url"])
+                        if attachment["remote_url"]:
+                                hackup[attachment["url"]] = attachment["remote_url"]
 
     # these two are always available; if the user didn't set it, will link to a
     # placeholder image
@@ -80,9 +86,25 @@ def media(args):
                     data = response.read()
                     fp.write(data)
                 except HTTPError as he:
-                  print("\nFailed to open " + url + " during a media request.")
+                  try:
+                    if url in hackup:
+                      req.full_url = hackup[url]
+                      with urllib.request.urlopen(req) as response, open(file_name, 'wb') as fp:
+                        data = response.read()
+                        fp.write(data)
+                        print("got from remote")
+                  except:
+                    print("\nFailed to open " + url + " during a media request.")
                 except URLError as ue:
-                  print("\nFailed to open " + url + " during a media request.")
+                  try:
+                    if url in hackup:
+                      req.full_url = hackup[url]
+                      with urllib.request.urlopen(req) as response, open(file_name, 'wb') as fp:
+                        data = response.read()
+                        fp.write(data)
+                        print("got from remote")
+                  except:
+                    print("\nFailed to open " + url + " during a media request.")
             except OSError as e:
                 print("\n" + e.msg + ": " + url, file=sys.stderr)
                 errors += 1
